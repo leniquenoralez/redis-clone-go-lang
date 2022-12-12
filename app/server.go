@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -29,10 +31,19 @@ func handleRequest(conn net.Conn) {
 	buf := make([]byte, 1024)
 	_, err := conn.Read(buf)
 
+	data := strings.Split(bytes.NewBuffer(buf).String(), "$4\r\n")
+	message := strings.TrimSpace(strings.ToLower(data[1]))
 	if err != nil {
 		fmt.Println("Error reading:", err.Error())
 		os.Exit(1)
 	}
-	conn.Write([]byte("+PONG\r\n"))
+
+	if message == "ping" && len(data) > 2 {
+		var value = "+" + strings.TrimSpace(strings.ToLower(data[2])) + "\r\n"
+		conn.Write([]byte(value))
+	} else {
+		conn.Write([]byte("+PONG\r\n"))
+	}
+
 	conn.Close()
 }
