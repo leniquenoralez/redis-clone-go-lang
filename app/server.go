@@ -15,14 +15,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	defer listener.Close()
-
 	conn, err := listener.Accept()
 	if err != nil {
 		fmt.Println("Error accepting connection: ", err.Error())
 		os.Exit(1)
 	}
-	go handleRequest(conn)
+	defer conn.Close()
+	handleRequest(conn)
 }
 
 func handleRequest(conn net.Conn) {
@@ -35,4 +34,5 @@ func handleRequest(conn net.Conn) {
 		os.Exit(1)
 	}
 	conn.Write([]byte("+PONG\r\n"))
+	conn.Close()
 }
