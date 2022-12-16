@@ -1,12 +1,12 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
-	"regexp"
 	"strings"
 )
 
@@ -26,46 +26,40 @@ func main() {
 			fmt.Println("Error accepting connection: ", err.Error())
 			continue
 		}
-		go handleClientRequest(conn)
+		go handleConnection(conn)
 	}
 
 }
 
-func handleClientRequest(conn net.Conn) {
+func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	for {
-		buffer := make([]byte, 1024)
-		_, err := conn.Read(buffer)
 
-		argsRegex := regexp.MustCompile(`[\r\n]+`)
-		bufferString := bytes.NewBuffer(buffer).String()
-		args := argsRegex.Split(bufferString, -1)
+		value, err := DecodeRESP(bufio.NewReader(conn))
 
-		if len(args) == 0 || err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
-
 		if err != nil {
-			fmt.Println("Error reading:", err.Error())
-			os.Exit(1)
+			fmt.Println("Error decoding RESP: ", err.Error())
+			return
 		}
 
-		command := strings.TrimSpace(strings.ToLower(args[2]))
+		command := strings.ToLower(value.Array()[0].String())
+		args := value.Array()[1:]
+
 		switch command {
 		case "ping":
-
-			if len(args) > 4 {
-				var value = "+" + strings.TrimSpace(strings.ToLower(args[4])) + "\r\n"
-				conn.Write([]byte(value))
+			if len(value.Array()) >= 2 {
+				conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(args[0].String()), args[0].String())))
 			} else {
 				conn.Write([]byte("+PONG\r\n"))
 			}
 			break
 		case "echo":
-			if len(args) > 4 {
-				var value = "+" + strings.TrimSpace(strings.ToLower(args[4])) + "\r\n"
-				conn.Write([]byte(value))
+			if len(value.Array()) >= 2 {
+				conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(args[0].String()), args[0].String())))
 			} else {
 				conn.Write([]byte("+(error) ERR wrong number of arguments for command\r\n"))
 			}
