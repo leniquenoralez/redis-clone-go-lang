@@ -18,27 +18,34 @@ func main() {
 		fmt.Println("Failed to bind to port 6379")
 		os.Exit(1)
 	}
-	conn, err := listener.Accept()
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
-	}
-	defer conn.Close()
+	defer listener.Close()
+
 	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			continue
+		}
+		go handleClientRequest(conn)
+	}
 
-		buf := make([]byte, 1024)
-		_, err := conn.Read(buf)
+}
 
-		re := regexp.MustCompile(`\$[0-9]+\r\n`)
-		bufferString := bytes.NewBuffer(buf).String()
-		args := re.Split(bufferString, -1)
+func handleClientRequest(conn net.Conn) {
+	defer conn.Close()
 
-		if len(args) == 0 {
+	for {
+		buffer := make([]byte, 1024)
+		_, err := conn.Read(buffer)
+
+		argsRegex := regexp.MustCompile(`\$[0-9]+\r\n`)
+		bufferString := bytes.NewBuffer(buffer).String()
+		args := argsRegex.Split(bufferString, -1)
+
+		if len(args) == 0 || err == io.EOF {
 			break
 		}
-		if err == io.EOF {
-			break
-		}
+
 		if err != nil {
 			fmt.Println("Error reading:", err.Error())
 			os.Exit(1)
@@ -53,10 +60,4 @@ func main() {
 			conn.Write([]byte("+PONG\r\n"))
 		}
 	}
-
 }
-
-// func handleRequest(conn net.Conn) {
-
-// 	conn.Close()
-// }
