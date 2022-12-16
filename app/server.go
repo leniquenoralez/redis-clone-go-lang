@@ -38,7 +38,7 @@ func handleClientRequest(conn net.Conn) {
 		buffer := make([]byte, 1024)
 		_, err := conn.Read(buffer)
 
-		argsRegex := regexp.MustCompile(`\$[0-9]+\r\n`)
+		argsRegex := regexp.MustCompile(`[\r\n]+`)
 		bufferString := bytes.NewBuffer(buffer).String()
 		args := argsRegex.Split(bufferString, -1)
 
@@ -51,13 +51,26 @@ func handleClientRequest(conn net.Conn) {
 			os.Exit(1)
 		}
 
-		message := strings.TrimSpace(strings.ToLower(args[1]))
+		command := strings.TrimSpace(strings.ToLower(args[2]))
+		switch command {
+		case "ping":
 
-		if message == "ping" && len(args) > 2 {
-			var value = "+" + strings.TrimSpace(strings.ToLower(args[2])) + "\r\n"
-			conn.Write([]byte(value))
-		} else {
-			conn.Write([]byte("+PONG\r\n"))
+			if len(args) > 4 {
+				var value = "+" + strings.TrimSpace(strings.ToLower(args[4])) + "\r\n"
+				conn.Write([]byte(value))
+			} else {
+				conn.Write([]byte("+PONG\r\n"))
+			}
+			break
+		case "echo":
+			if len(args) > 4 {
+				var value = "+" + strings.TrimSpace(strings.ToLower(args[4])) + "\r\n"
+				conn.Write([]byte(value))
+			} else {
+				conn.Write([]byte("+(error) ERR wrong number of arguments for command\r\n"))
+			}
+			break
 		}
+
 	}
 }
