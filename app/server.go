@@ -94,18 +94,15 @@ func handleSet(conn net.Conn, store map[string]Data, value Value) {
 
 	valueArray := value.Array()
 	key := valueArray[1].String()
-	fmt.Printf("Args: %v %d", value.Array(), len(value.Array()))
 
 	valueData := Data{
 		value: value.Array()[2].String(),
 	}
 
 	argCount := len(value.Array())
-	exprType := strings.ToLower(value.Array()[3].String())
-	if argCount == 5 && exprType == "px" {
+	if argCount == 5 && strings.ToLower(value.Array()[3].String()) == "px" {
 		val := value.Array()[4].String()
 		exp, _ := strconv.ParseInt(val, 10, 64)
-		fmt.Printf("\nexpires in: %d %d", time.Now().UnixMilli()+exp, exp)
 		valueData.expire = time.Now().UnixMilli() + exp
 	}
 
@@ -123,7 +120,8 @@ func handleGet(conn net.Conn, store map[string]Data, value Value) {
 		conn.Write([]byte("+(error) Key does not exist in store!\r\n"))
 		return
 	}
-	if now >= keyValue.expire {
+
+	if now >= keyValue.expire && keyValue.expire != 0 {
 		conn.Write([]byte("$-1\r\n"))
 		return
 	}
