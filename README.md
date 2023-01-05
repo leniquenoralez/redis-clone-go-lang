@@ -1,1 +1,1 @@
-# Redis Clone build with Go
+# Redis Clone built with Go Lang
